@@ -1,0 +1,16 @@
+# SeaShips24790 dataset config template for Ultralytics YOLO.
+# Copy this file to configs/seaships24790.local.yaml and edit the real
+# dataset path locally. Do not commit local config files to GitHub.
+
+path: /path/to/SeaShips24790
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: container_ship
+  1: passenger_ship
+  2: cargo_ship
+  3: fishing_boat
+  4: island
+  5: floatage
