@@ -217,61 +217,19 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# =========================
-# Project-specific: YOLO / SeaShips experiments
-# =========================
-
-# Datasets - never commit raw images or labels
+# Datasets, local configs, and ML experiment artifacts
+labels/
 datasets/
 data/
 SeaShips24790/
-
-# YOLO / training outputs
 runs/
 weights/
 checkpoints/
-outputs/
-predictions/
-inference/
-exp/
-experiments/
-
-# Model weights and exported models
-*.pt
-*.pth
-*.ckpt
-*.onnx
-*.engine
-*.trt
-*.torchscript
-*.mlmodel
-*.tflite
-*.pb
-
-# Experiment tracking
 wandb/
 mlruns/
-tensorboard/
-events.out.tfevents*
-
-# Large result artifacts
-*.mp4
-*.avi
-*.mov
-*.mkv
-*.zip
-*.tar
-*.tar.gz
-*.rar
-*.7z
-
-# Local config files with private paths
+*.pt
+*.pth
+*.onnx
+*.engine
 configs/*local*.yaml
 configs/*local*.yml
-*.local.yaml
-*.local.yml
-
-# Keep lightweight summaries, but ignore generated heavy reports if needed
-results/images/
-results/predictions/
-results/plots/

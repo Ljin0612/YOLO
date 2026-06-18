@@ -134,6 +134,9 @@ def validate_label_file(
             errors.append(f"{label_path}:{line_number}: bbox values must be normalized to 0-1")
 
         _, _, width, height = values
+        if width <= 0 or height <= 0:
+            errors.append(f"{label_path}:{line_number}: bbox width and height must be greater than 0")
+
         box_count += 1
         class_counts[class_id] += 1
         size_counts[classify_box_size(width, height, imgsz)] += 1
