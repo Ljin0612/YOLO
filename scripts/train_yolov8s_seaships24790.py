@@ -40,7 +40,8 @@ def main() -> None:
         name=args.name,
     )
 
-    save_dir = Path(getattr(results, "save_dir", Path(args.project) / args.name))
+    trainer_save_dir = getattr(getattr(model, "trainer", None), "save_dir", None)
+    save_dir = Path(trainer_save_dir or getattr(results, "save_dir", Path(args.project) / args.name))
     print("\nTraining finished.")
     print(f"Best weights should be saved at: {save_dir / 'weights' / 'best.pt'}")
     print(f"Training metrics CSV should be saved at: {save_dir / 'results.csv'}")

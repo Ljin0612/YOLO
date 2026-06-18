@@ -75,7 +75,7 @@ def main() -> None:
     frame = pd.read_csv(results_path)
     frame.columns = [column.strip() for column in frame.columns]
     row = select_row(frame, args.prefer)
-    epochs_done = int(row.get("epoch", len(frame) - 1)) + 1 if "epoch" in frame.columns else args.epochs
+    epochs_done = int(row["epoch"]) if "epoch" in frame.columns else len(frame)
 
     summary = {
         "Model": args.model,

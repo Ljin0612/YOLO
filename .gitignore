@@ -216,3 +216,20 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Datasets, local configs, and ML experiment artifacts
+labels/
+datasets/
+data/
+SeaShips24790/
+runs/
+weights/
+checkpoints/
+wandb/
+mlruns/
+*.pt
+*.pth
+*.onnx
+*.engine
+configs/*local*.yaml
+configs/*local*.yml

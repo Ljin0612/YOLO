@@ -5,9 +5,11 @@
 Run a YOLOv8-s baseline on SeaShips24790 and collect Precision, Recall, mAP50,
 mAP50:95, and per-class AP for paper and presentation tables.
 
-## Dataset Layout
+## Dataset Layout and Annotation Format
 
-Keep the dataset outside Git. The expected YOLO layout is:
+Keep the dataset outside Git. The current SeaShips24790 raw annotations are COCO
+JSON files, not native YOLO txt labels. The source dataset is expected to look
+like this before conversion:
 
 ```text
 SeaShips24790/
@@ -15,19 +17,37 @@ SeaShips24790/
     train/
     val/
     test/
+  annotations/
+    train.json
+    val.json
+    test.json
+```
+
+Convert the COCO JSON annotations to YOLO txt labels locally before checking or
+training:
+
+```bash
+python scripts/convert_coco_to_yolo.py --dataset-root /path/to/SeaShips24790
+```
+
+The converter writes derived label files to:
+
+```text
+SeaShips24790/
   labels/
     train/
     val/
     test/
 ```
 
-Each label file must use YOLO format:
+Each label file uses YOLO format:
 
 ```text
 class_id x_center y_center width height
 ```
 
-All bbox coordinates must be normalized to the 0-1 range. Class IDs must match:
+All bbox coordinates must be normalized to the 0-1 range. Class IDs must match
+this fixed order:
 
 | id | class |
 |---:|---|
@@ -40,7 +60,8 @@ All bbox coordinates must be normalized to the 0-1 range. Class IDs must match:
 
 ## Local Data Config
 
-Copy the committed template and edit only the local copy:
+`configs/seaships24790.yaml` is a committed template only. Copy it and edit only
+the local copy for your machine-specific dataset path:
 
 ```bash
 cp configs/seaships24790.yaml configs/seaships24790.local.yaml
@@ -64,9 +85,15 @@ On Windows PowerShell, activate with:
 pip install -r requirements_yolov8.txt
 ```
 
-## Dataset Check
+## Recommended Workflow
 
-Run the dataset check before training:
+### 1. Convert COCO JSON to YOLO Labels
+
+```bash
+python scripts/convert_coco_to_yolo.py --dataset-root /path/to/SeaShips24790
+```
+
+### 2. Check the Converted YOLO Dataset
 
 ```bash
 python scripts/check_yolo_dataset.py --data configs/seaships24790.local.yaml
@@ -78,7 +105,7 @@ The report is saved to:
 results/dataset_check_report.md
 ```
 
-## 1 Epoch Smoke Test
+### 3. Run a 1 Epoch Smoke Test
 
 ```bash
 python scripts/train_yolov8s_seaships24790.py \
@@ -87,7 +114,7 @@ python scripts/train_yolov8s_seaships24790.py \
   --name yolov8s_smoke_test
 ```
 
-## Full Training
+### 4. Run Full Training
 
 ```bash
 python scripts/train_yolov8s_seaships24790.py \
@@ -136,8 +163,10 @@ results/yolov8s_seaships24790_summary.md
 results/yolov8s_seaships24790_summary.csv
 ```
 
-## Notes
+## Git Hygiene
 
-Do not commit dataset images, labels, training runs, weights, predictions, or logs.
-The repository ignores dataset folders, `runs/`, common weight formats, experiment
-tracking folders, and local dataset YAML files.
+Do not commit raw datasets, converted labels, training runs, predictions,
+weights, checkpoints, experiment logs, or local data YAML files. In particular,
+do not commit `SeaShips24790/`, `labels/`, `datasets/`, `data/`, `runs/`,
+`weights/`, `checkpoints/`, `wandb/`, `mlruns/`, `*.pt`, `*.pth`, `*.onnx`,
+`*.engine`, or `configs/*local*.yaml` / `configs/*local*.yml` files.
