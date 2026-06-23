@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import csv
 import random
+from collections import defaultdict
 import sys
 from pathlib import Path
 
@@ -81,13 +82,10 @@ def main() -> int:
         model.load_state_dict(ckpt["model"]); optimizer.load_state_dict(ckpt["optimizer"])
         start_epoch = int(ckpt.get("epoch", 0)); best_map50 = float(ckpt.get("best_map50", -1.0))
 
-    fields = ["epoch", "loss", "loss_classifier", "loss_box_reg", "loss_objectness", "loss_rpn_box_reg", "Precision", "Recall", "mAP50", "mAP50:95"]
-    if not log_path.exists():
-        with log_path.open("w", newline="", encoding="utf-8") as f:
-            csv.DictWriter(f, fieldnames=fields).writeheader()
+    metric_fields = ["Precision", "Recall", "mAP50", "mAP50:95"]
 
     for epoch in range(start_epoch, args.epochs):
-        model.train(); totals = {k: 0.0 for k in fields[1:5]}; steps = 0
+        model.train(); totals = defaultdict(float); steps = 0
         for images, targets in train_loader:
             images = [img.to(device) for img in images]
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
@@ -96,15 +94,29 @@ def main() -> int:
                 loss_dict = model(images, targets)
                 loss = sum(loss_dict.values())
             scaler.scale(loss).backward(); scaler.step(optimizer); scaler.update()
-            steps += 1; totals["loss"] += float(loss.detach().cpu())
-            for key in ("loss_classifier", "loss_box_reg", "loss_objectness", "loss_rpn_box_reg"):
-                totals[key] += float(loss_dict.get(key, torch.tensor(0.0)).detach().cpu())
+            steps += 1
+            totals["loss_total"] += float(loss.detach().cpu())
+            for key, value in loss_dict.items():
+                totals[key] += float(value.detach().cpu())
         train_metrics = {k: v / max(steps, 1) for k, v in totals.items()}
         eval_metrics = evaluate_model(model, val_loader, device, num_classes=6)
-        row = {"epoch": epoch + 1, **train_metrics, **{k: eval_metrics.get(k, 0.0) for k in fields[-4:]}}
-        print("Epoch {epoch}: loss_classifier={loss_classifier:.4f} loss_box_reg={loss_box_reg:.4f} loss_objectness={loss_objectness:.4f} loss_rpn_box_reg={loss_rpn_box_reg:.4f} mAP50={mAP50:.4f}".format(**row))
-        with log_path.open("a", newline="", encoding="utf-8") as f:
-            csv.DictWriter(f, fieldnames=fields).writerow(row)
+        row = {"epoch": epoch + 1, **train_metrics, **{k: eval_metrics.get(k, 0.0) for k in metric_fields}}
+        loss_text = " ".join(f"{key}={value:.4f}" for key, value in train_metrics.items())
+        print(f"Epoch {row['epoch']}: {loss_text} mAP50={row['mAP50']:.4f}")
+        if log_path.exists():
+            with log_path.open("r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                fields = list(reader.fieldnames or [])
+                previous_rows = list(reader)
+        else:
+            fields = []
+            previous_rows = []
+        fields = fields + [key for key in row if key not in fields]
+        with log_path.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(previous_rows)
+            writer.writerow(row)
         ckpt = {"model": model.state_dict(), "optimizer": optimizer.state_dict(), "epoch": epoch + 1, "best_map50": best_map50, "args": vars(args)}
         torch.save(ckpt, save_dir / "last.pth")
         if row["mAP50"] > best_map50:
