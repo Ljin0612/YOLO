@@ -220,6 +220,7 @@ __marimo__/
 # Datasets, local configs, and ML experiment artifacts
 labels/
 datasets/
+!scripts/datasets/
 data/
 SeaShips24790/
 runs/
