@@ -21,10 +21,16 @@ CLASS_NAMES = {
     5: "floatage",
 }
 NUM_CLASSES = 6
+MISSING_DATA_CONFIG_MESSAGE = (
+    "Data config not found. Please copy configs/seaships24790.yaml to "
+    "configs/seaships24790.local.yaml and edit the dataset path."
+)
 
 
 def load_data_yaml(path: str | Path) -> dict[str, Any]:
     config_path = Path(path).expanduser()
+    if not config_path.exists():
+        raise FileNotFoundError(MISSING_DATA_CONFIG_MESSAGE)
     with config_path.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle) or {}
     if "path" not in data:
