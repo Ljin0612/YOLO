@@ -48,7 +48,23 @@ This is a feasibility baseline, not the final RGB-IR fusion or Semantic-aware PC
 - `docs/univ_seaships24790_detection_experiment.md`
 - `docs/seaships24790_detection_comparison_template.md`
 
-## 6. Training and evaluation commands
+## 6. Environment recommendations
+
+Plan A is the recommended detection environment: create `univ_seaships` with Python 3.8, PyTorch/Torchvision CUDA 11.7 wheels, common scientific packages, `einops`, `timm==0.4.12`, `pycocotools`, and `torchmetrics`, then install the repository requirements. Plan B is the legacy `univ_legacy` Python 3.6 environment with PyTorch/Torchvision CUDA 11.3 wheels if the uploaded UNIV code cannot run under Python 3.8. The original UNIV README appears to typo `conda activate UINV`; treat it as the created UNIV environment name.
+
+`UNIV-main/requirements.txt` currently pins newer packages, including `torch==2.4.1`, `torchvision==0.19.1`, and `timm==1.0.12`, which can conflict with the conservative Plan A detection stack. For this baseline, prefer the explicit Plan A package versions and only fall back to the legacy environment if compatibility requires it.
+
+## 7. Local data YAML setup
+
+`configs/seaships24790.yaml` is the committed template and must not contain server-specific absolute paths. Create a local config with:
+
+```bash
+cp configs/seaships24790.yaml configs/seaships24790.local.yaml
+```
+
+Then edit `configs/seaships24790.local.yaml` so `path` points to the real SeaShips24790 root. The local file is ignored by Git. If it is missing, the dataset loader raises: `Data config not found. Please copy configs/seaships24790.yaml to configs/seaships24790.local.yaml and edit the dataset path.`
+
+## 8. Training and evaluation commands
 
 Smoke test:
 

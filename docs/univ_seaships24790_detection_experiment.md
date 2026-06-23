@@ -2,15 +2,40 @@
 
 ## 1. Experiment objective
 
-Validate the feasibility of using UNIV/ViT representations for downstream object detection on SeaShips24790 and provide a comparison point against existing YOLOv8-s, YOLOv9-s, and YOLOv10-s baselines.
+Validate the feasibility of using UNIV / ViT representations for downstream object detection on SeaShips24790 and provide a comparison point against existing YOLOv8-s, YOLOv9-s, and YOLOv10-s baselines.
 
 ## 2. Current phase
 
 This experiment is a UNIV downstream detection feasibility validation. It is not the final RGB-IR fusion experiment. Semantic-aware PCCL and RGB-IR fusion modules will be implemented separately later.
 
-## 3. Dataset format
+## 3. Dataset configuration
 
-SeaShips24790 starts from COCO JSON annotations. Before training, run the existing `convert_coco_to_yolo.py` workflow to generate YOLO-format labels. This UNIV detection experiment reads the converted YOLO labels directly and does not modify the verified conversion logic.
+`configs/seaships24790.yaml` is a safe template only. It intentionally uses `/path/to/SeaShips24790` and must not be edited with server-specific absolute paths before committing.
+
+Create a local dataset config with:
+
+```bash
+cp configs/seaships24790.yaml configs/seaships24790.local.yaml
+```
+
+Then manually edit `configs/seaships24790.local.yaml` so `path` points to the real SeaShips24790 root. Local YAML files are ignored by Git and should not be committed. If the local YAML is missing, the training/evaluation dataset loader prints:
+
+```text
+Data config not found. Please copy configs/seaships24790.yaml to configs/seaships24790.local.yaml and edit the dataset path.
+```
+
+SeaShips24790 starts from COCO JSON annotations. Before training, run the existing `convert_coco_to_yolo.py` workflow if YOLO-format labels are not already available. This UNIV detection experiment reads the converted YOLO labels directly and does not modify the verified conversion logic.
+
+Expected split layout under the configured dataset root:
+
+```text
+images/train
+images/val
+images/test
+labels/train
+labels/val
+labels/test
+```
 
 ## 4. Classes
 
@@ -27,19 +52,33 @@ Torchvision Faster R-CNN reserves label `0` for background internally, so the da
 
 ## 5. Environment installation
 
+### Plan A: recommended detection environment
+
 ```bash
-conda create -n univ_seaships python=3.10 -y
+conda create -n univ_seaships python=3.8 -y
 conda activate univ_seaships
+pip install -U pip setuptools wheel
+pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 -f https://download.pytorch.org/whl/torch_stable.html
+pip install opencv-python pillow pyyaml tqdm numpy scipy pandas matplotlib scikit-learn
+pip install einops timm==0.4.12 pycocotools torchmetrics
 pip install -r requirements.txt
 ```
 
-Additional packages typically needed by this baseline:
+### Plan B: legacy UNIV environment if Python 3.8 is incompatible
+
+The original UNIV README says `conda activate UINV`; this appears to be a typo and should be understood as `UNIV`/the created environment name.
 
 ```bash
-pip install torch torchvision pyyaml pillow numpy pycocotools torchmetrics
+conda create -n univ_legacy python=3.6 -y
+conda activate univ_legacy
+pip install pip==21.3.1 setuptools==59.6.0 wheel
+pip install torch==1.10.2+cu113 torchvision==0.11.3+cu113 -f https://download.pytorch.org/whl/torch_stable.html
+pip install -r requirements.txt
 ```
 
-The provided evaluator includes a lightweight internal AP implementation, so `pycocotools`/`torchmetrics` are recommended but not strictly required for the initial smoke test.
+Note: `UNIV-main/requirements.txt` pins newer packages such as `torch==2.4.1`, `torchvision==0.19.1`, and `timm==1.0.12`, which conflict with the conservative detection environment above. Prefer installing the explicit Plan A packages first for this detection baseline; use the legacy environment only if the uploaded UNIV code requires it.
+
+The provided evaluator includes a lightweight internal AP implementation, so `pycocotools`/`torchmetrics` are recommended for future metric parity but are not strictly required for the initial smoke test.
 
 ## 6. Data check command
 
@@ -88,31 +127,9 @@ python scripts/eval_univ_detector_seaships24790.py \
 --device 0
 ```
 
-## 10. Screen background training
+## 10. Notes
 
-```bash
-screen -S univ_seaships
-conda activate univ_seaships
-python scripts/train_univ_detector_seaships24790.py \
---data configs/seaships24790.local.yaml \
---univ-weights /path/to/univ_pretrained.pth \
---imgsz 640 \
---batch 2 \
---epochs 50 \
---device 0 \
---project runs/seaships24790 \
---name univ_detector_baseline \
---freeze-backbone True \
---amp False
-# Detach with Ctrl-a d; reattach with: screen -r univ_seaships
-```
-
-## 11. Notes
-
-- Do not commit datasets.
-- Do not commit labels.
-- Do not commit runs.
-- Do not commit `*.pt` or `*.pth` weights.
+- Do not commit datasets, labels, runs, local YAML files, checkpoints, or `*.pt`/`*.pth` weights.
 - UNIV detector results should not be treated as architecturally identical to YOLO results because the detection head is Faster R-CNN, not a YOLO head.
 - This experiment mainly validates that UNIV representations can be connected to a detection task.
-- Future improvements can include UNIV + YOLO Head, UNIV + FPN, and UNIV + Semantic-aware PCCL.
+- Future improvements can include UNIV + YOLO Head, UNIV + FPN, RGB-IR fusion, and UNIV + Semantic-aware PCCL.
