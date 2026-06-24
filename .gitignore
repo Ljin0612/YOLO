@@ -236,3 +236,5 @@ configs/*local*.yaml
 configs/*local*.yml
 Seaships24790/
 *.cache
+
+pretrained/
