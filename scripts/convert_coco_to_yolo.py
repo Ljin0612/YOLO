@@ -37,7 +37,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def normalize_name(name: str) -> str:
-    return "_".join(name.strip().lower().replace("-", "_").split()).replace("__", "_")
+    """Normalize COCO category names for robust name-based matching."""
+    return " ".join(name.strip().lower().replace("_", " ").split())
 
 
 def load_coco(path: Path) -> dict[str, Any]:
@@ -84,21 +85,47 @@ def convert_bbox(bbox: list[float], image_width: float, image_height: float) -> 
     return values[0], values[1], values[2], values[3], clipped
 
 
-def category_mapping(categories: list[dict[str, Any]]) -> tuple[dict[int, int], list[str]]:
-    fixed_name_to_id = {name: index for index, name in enumerate(YOLO_CLASS_NAMES)}
+def category_mapping(categories: list[dict[str, Any]]) -> tuple[dict[int, int], dict[int, str], list[str]]:
+    name_to_yolo = {normalize_name(name): index for index, name in enumerate(YOLO_CLASS_NAMES)}
+    name_to_yolo.update(
+        {
+            "container ship": 0,
+            "passenger ship": 1,
+            "cargo ship": 2,
+            "fishing boat": 3,
+            "flotage": 5,
+            "floatage": 5,
+        }
+    )
+
+    coco_id_to_name: dict[int, str] = {}
     coco_to_yolo: dict[int, int] = {}
     warnings_list: list[str] = []
     for category in categories:
         category_id = category.get("id")
-        name = normalize_name(str(category.get("name", "")))
+        original_name = str(category.get("name", ""))
+        normalized_name = normalize_name(original_name)
         if category_id is None:
             warnings_list.append(f"category without id skipped: {category}")
             continue
-        if name in fixed_name_to_id:
-            coco_to_yolo[int(category_id)] = fixed_name_to_id[name]
-        else:
+
+        int_category_id = int(category_id)
+        coco_id_to_name[int_category_id] = original_name
+        yolo_class_id = name_to_yolo.get(normalized_name)
+        if yolo_class_id is None:
             warnings_list.append(f"category id {category_id} name '{category.get('name')}' is outside fixed classes")
-    return coco_to_yolo, warnings_list
+            continue
+        coco_to_yolo[int_category_id] = yolo_class_id
+    return coco_to_yolo, coco_id_to_name, warnings_list
+
+
+def print_category_mapping(split: str, coco_to_yolo: dict[int, int], coco_id_to_name: dict[int, str]) -> None:
+    print(f"\nSplit: {split}")
+    print("  Category mapping (COCO id -> COCO name -> YOLO class id):")
+    for category_id in sorted(coco_id_to_name):
+        yolo_class_id = coco_to_yolo.get(category_id)
+        yolo_value = "unsupported" if yolo_class_id is None else str(yolo_class_id)
+        print(f"    {category_id} -> {coco_id_to_name[category_id]} -> {yolo_value}")
 
 
 def convert_split(dataset_root: Path, split: str, annotations_dir: str, images_dir: str, labels_dir: str) -> None:
@@ -109,7 +136,8 @@ def convert_split(dataset_root: Path, split: str, annotations_dir: str, images_d
 
     images = {image.get("id"): image for image in data["images"]}
     label_lines: dict[Any, list[str]] = defaultdict(list)
-    coco_to_yolo, category_warnings = category_mapping(data["categories"])
+    coco_to_yolo, coco_id_to_name, category_warnings = category_mapping(data["categories"])
+    print_category_mapping(split, coco_to_yolo, coco_id_to_name)
     class_counts: Counter[int] = Counter()
     skipped = 0
     clipped_boxes = 0
@@ -126,10 +154,18 @@ def convert_split(dataset_root: Path, split: str, annotations_dir: str, images_d
             continue
 
         category_id = annotation.get("category_id")
-        class_id = coco_to_yolo.get(category_id)
+        try:
+            int_category_id = int(category_id)
+        except (TypeError, ValueError):
+            int_category_id = -1
+        class_id = coco_to_yolo.get(int_category_id)
         if class_id is None:
             skipped += 1
-            warnings.warn(f"[{split}] skipped annotation {annotation.get('id')}: unsupported category_id {category_id}")
+            category_name = coco_id_to_name.get(int_category_id, "unknown")
+            warnings.warn(
+                f"[{split}] skipped annotation {annotation.get('id')}: "
+                f"unsupported category_id {category_id} name '{category_name}'"
+            )
             continue
 
         bbox = annotation.get("bbox")
@@ -173,7 +209,6 @@ def convert_split(dataset_root: Path, split: str, annotations_dir: str, images_d
         label_path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
         label_file_count += 1
 
-    print(f"\nSplit: {split}")
     print(f"  Images: {len(data['images'])}")
     print(f"  Annotations: {len(data['annotations'])}")
     print(f"  Label files: {label_file_count}")

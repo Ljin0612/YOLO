@@ -220,6 +220,7 @@ __marimo__/
 # Datasets, local configs, and ML experiment artifacts
 labels/
 datasets/
+!scripts/datasets/
 data/
 SeaShips24790/
 runs/
@@ -233,3 +234,10 @@ mlruns/
 *.engine
 configs/*local*.yaml
 configs/*local*.yml
+Seaships24790/
+*.cache
+
+pretrained/
+
+# Local evaluation summaries
+results/
