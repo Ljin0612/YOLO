@@ -238,3 +238,6 @@ Seaships24790/
 *.cache
 
 pretrained/
+
+# Local evaluation summaries
+results/
